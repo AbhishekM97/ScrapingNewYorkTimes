@@ -1,0 +1,21 @@
+.NewArticles{
+    cursor: pointer;
+}
+.saved{
+    cursor: pointer;
+}
+
+.background-image{
+    background-image: url('/Assets/Newspaper.jpg');
+    background-size: cover;
+}
+
+.overlay .jumbatron{
+    z-index: auto;
+    background: linear-gradient(black);
+    opacity: 0.7;
+}
+
+.Clear{
+    margin-left: 5px;
+}

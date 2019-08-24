@@ -1,44 +1,108 @@
 //Dependencies 
 
 var express = require("express");
-var mongojs = require("mongojs");
+var mongoose = require("mongoose");
+var logger = require("morgan");
 
 
 //These two dependencies make scraping possible.
 var axios = require("axios");
 var cheerio = require("cheerio");
 
+//Gets the schemas constructors from saved.js and Articles.js
+var db = require("./Saved");
+
+var PORT = 3000;
 
 //Initialize app
 var app = express();
 
+app.use(logger("dev"));
+
+app.use(express.urlencoded({ extended: true}));
+app.use(express.json());
+
+app.use(express.static("Public"));
+
+
 // If deployed, use the deployed database. Otherwise use the local mongoHeadlines database
-//var MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost/mongoHeadlines";
+var MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost/mongoHeadlines";
 
-//mongoose.connect(MONGODB_URI);
+mongoose.connect("mongodb://localhost/mongoHeadlines", { useNewUrlParser: true });
+
+var Database = mongoose.connection;
+Database.on("error", console.error.bind(console, "connection error:"));
+Database.once("open", function(){
+    console.log("connected to Mongoose!");
+});
+//get route to scrape the 'nytimes.com' webpage.
+
+app.get("/scrape", function(req, res){
+console.log("3");
+    axios.get("https://www.nytimes.com").then(function(response){
+    var $ = cheerio.load(response.data);
+   // console.log(response.data);
+                    
 
 
-axios.get('https://www.nytimes.com').then(function(response){
+    $("article h2").each(function(i, element){
+        var result = {};
+        result.title = $(element).text();
 
-var $ = cheerio.load(response.data);
+        result.link = $(element).parents("a").attr("href");
+            
+        db.Article.create(result)
+            .then(function(dbArticle){
+                console.log(dbArticle);
+            })
+            .catch(function(error){
+                console.log(error);
+            });
+            
+           //console.log(result);
+    });
 
-var results = [];
+    res.send("Scraping complete boss");
+    });
 
+});
 
-$("h2.css-1qwxefa").each(function(i, element){
-    var articleTitle = $(element).text();
+app.get("/SavedArticles", function(req, res){
+    db.Article.find({})
+    .then(function(dbArticle){
+        res.json(dbArticle);
+    })
+    .catch(function(error){
+        res.json(error)
+    });
+});
 
-    var articleLink = $(element).parent().attr("href");
-
-
-    results.push({
-        ArticleTitle: articleTitle,
-        ArticleLink: articleLink
+app.post("/SavedArticles",function(req, res){
+    db.Saved.create(req.body)
+    .then(function(dbSaved){
+        res.json(dbSaved);
+    })
+    .catch(function(error){
+        res.json(error);
     });
 });
 
 
-console.log(results);
+app.listen(3000, function(){
+    console.log("App running on port" + PORT);
 });
+
+app.get("/Articles", function(req, res){
+    db.Article.find({})
+    .then(function(dbArticle){
+        res.json(dbArticle);
+    })
+    .catch(function(error){
+        res.json(error)
+    })
+});
+
+
+
 
 
